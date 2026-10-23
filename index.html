@@ -95,6 +95,7 @@ const dialogue = [
 ];
 const chat=document.getElementById('chat'),draft=document.getElementById('draft'),send=document.getElementById('send'),presence=document.getElementById('presence');
 let index=0, waitingForSend=false, isTyping=false, awaitingJoseTap=false, typingStarted=false;
+draft.readOnly=true;
 const keyboard=document.getElementById("keyboard");
 const avatarUrl='assets/rod.jpg';
 function scrollBottom(){chat.scrollTop=chat.scrollHeight}
@@ -106,7 +107,7 @@ function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 function typeDraft(text){return new Promise(resolve=>{draft.value='';draft.readOnly=true;let i=0;isTyping=true;typingStarted=true;const step=()=>{if(i>=text.length){isTyping=false;draft.readOnly=false;waitingForSend=true;send.disabled=!draft.value.trim();presence.textContent='online';resolve();return}const ch=text[i++];draft.value+=ch;send.disabled=false;scrollBottom();let delay=85+Math.random()*105;if(/[.,!?…]/.test(ch))delay+=260+Math.random()*260;else if(ch===' ')delay+=25;setTimeout(step,delay)};step()})}
 async function run(){if(index>=dialogue.length)return;const [who,text]=dialogue[index];if(who==='rod'){await sleep(900);presence.textContent='typing…';addTyping();const delay=text.length>360?4200:text.length>150?3200:2400;await sleep(delay);document.getElementById('typingRow')?.remove();addBubble('rod',text);presence.textContent='online';index++;run()}else{await sleep(350);awaitingJoseTap=true;typingStarted=false;waitingForSend=false;draft.readOnly=true;send.disabled=true;presence.textContent='online'}}
 draft.addEventListener('focus',()=>{if(awaitingJoseTap&&!typingStarted){awaitingJoseTap=false;keyboard.style.display='block';keyboard.setAttribute('aria-hidden','false');typeDraft(dialogue[index][1]);}});
-send.addEventListener('click',()=>{if(!waitingForSend||!draft.value.trim())return;const text=draft.value.trim();addBubble('jose',text);draft.value='';draft.readOnly=true;send.disabled=true;waitingForSend=false;typingStarted=false;keyboard.style.display='none';keyboard.setAttribute('aria-hidden','true');index++;sleep(800).then(run)});
+send.addEventListener('click',()=>{if(!waitingForSend||!draft.value.trim())return;const text=draft.value.trim();addBubble('jose',text);draft.value='';draft.readOnly=true;send.disabled=true;waitingForSend=false;typingStarted=false;keyboard.style.display='none';keyboard.setAttribute('aria-hidden','true');draft.blur();index++;sleep(800).then(run)});
 draft.addEventListener('input',()=>{if(!waitingForSend)send.disabled=true});
 draft.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();send.click()}});
 document.getElementById('headerAvatar').onerror=function(){this.style.background='#fff';this.style.objectFit='contain';this.removeAttribute('src');this.alt='R';this.style.padding='8px'};
