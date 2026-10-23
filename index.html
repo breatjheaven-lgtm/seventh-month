@@ -35,7 +35,7 @@
  <div class="inputline"><div class="plus">＋</div><div class="inputwrap"><input id="draft" type="text" autocomplete="off" placeholder="Write a message..." aria-label="Message draft"><button class="send" id="send" disabled>Send</button></div></div>
  <div class="tools"><span>▧</span><span>▤</span><span>☻</span><span>♫</span></div>
 </section>
-<div class="keyboard" aria-hidden="true">
+<div class="keyboard" id="keyboard" aria-hidden="true" style="display:none">
  <div class="keyrow"><span class="key">q</span><span class="key">w</span><span class="key">e</span><span class="key">r</span><span class="key">t</span><span class="key">y</span><span class="key">u</span><span class="key">i</span><span class="key">o</span><span class="key">p</span></div>
  <div class="keyrow"><span class="key">a</span><span class="key">s</span><span class="key">d</span><span class="key">f</span><span class="key">g</span><span class="key">h</span><span class="key">j</span><span class="key">k</span><span class="key">l</span></div>
  <div class="keyrow"><span class="key wide">⇧</span><span class="key">z</span><span class="key">x</span><span class="key">c</span><span class="key">v</span><span class="key">b</span><span class="key">n</span><span class="key">m</span><span class="key wide">⌫</span></div>
@@ -94,7 +94,8 @@ const dialogue = [
 ["rod","Happy 7th mensiversary, my favorite person."]
 ];
 const chat=document.getElementById('chat'),draft=document.getElementById('draft'),send=document.getElementById('send'),presence=document.getElementById('presence');
-let index=0, waitingForSend=false, isTyping=false;
+let index=0, waitingForSend=false, isTyping=false, awaitingJoseTap=false, typingStarted=false;
+const keyboard=document.getElementById("keyboard");
 const avatarUrl='assets/rod.jpg';
 function scrollBottom(){chat.scrollTop=chat.scrollHeight}
 function addBubble(who,text){const row=document.createElement('div');row.className='msgrow '+(who==='jose'?'out':'in');if(who==='rod'){const img=document.createElement('img');img.className='mini-avatar';img.src=avatarUrl;img.alt='';img.onerror=()=>img.style.visibility='hidden';row.appendChild(img)}
@@ -102,10 +103,11 @@ const b=document.createElement('div');b.className='bubble';b.textContent=text;ro
 const stamp=document.createElement('span');stamp.className='stamp';stamp.textContent='now';row.appendChild(stamp);chat.appendChild(row);scrollBottom()}
 function addTyping(){const row=document.createElement('div');row.className='msgrow in';row.id='typingRow';const img=document.createElement('img');img.className='mini-avatar';img.src=avatarUrl;img.alt='';img.onerror=()=>img.style.visibility='hidden';row.appendChild(img);const b=document.createElement('div');b.className='bubble typing';b.innerHTML='<i></i><i></i><i></i>';row.appendChild(b);chat.appendChild(row);scrollBottom()}
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
-function typeDraft(text){return new Promise(resolve=>{draft.value='';let i=0;isTyping=true;const step=()=>{if(i>=text.length){isTyping=false;resolve();return}draft.value+=text[i++];send.disabled=false;scrollBottom();setTimeout(step,Math.max(13,Math.min(32,2300/text.length))) };step()})}
-async function run(){if(index>=dialogue.length)return;const [who,text]=dialogue[index];if(who==='rod'){presence.textContent='typing…';addTyping();const delay=text.length>360?4000:text.length>150?3000:2000;await sleep(delay);document.getElementById('typingRow')?.remove();addBubble('rod',text);presence.textContent='online';index++;run()}else{await typeDraft(text);waitingForSend=true;send.disabled=false;presence.textContent='online'}}
-send.addEventListener('click',()=>{if(!waitingForSend||!draft.value.trim())return;const text=draft.value.trim();addBubble('jose',text);draft.value='';send.disabled=true;waitingForSend=false;index++;sleep(500).then(run)});
-draft.addEventListener('input',()=>{if(!waitingForSend)send.disabled=!draft.value.trim()});
+function typeDraft(text){return new Promise(resolve=>{draft.value='';draft.readOnly=true;let i=0;isTyping=true;typingStarted=true;const step=()=>{if(i>=text.length){isTyping=false;draft.readOnly=false;waitingForSend=true;send.disabled=!draft.value.trim();presence.textContent='online';resolve();return}const ch=text[i++];draft.value+=ch;send.disabled=false;scrollBottom();let delay=85+Math.random()*105;if(/[.,!?…]/.test(ch))delay+=260+Math.random()*260;else if(ch===' ')delay+=25;setTimeout(step,delay)};step()})}
+async function run(){if(index>=dialogue.length)return;const [who,text]=dialogue[index];if(who==='rod'){await sleep(900);presence.textContent='typing…';addTyping();const delay=text.length>360?4200:text.length>150?3200:2400;await sleep(delay);document.getElementById('typingRow')?.remove();addBubble('rod',text);presence.textContent='online';index++;run()}else{await sleep(350);awaitingJoseTap=true;typingStarted=false;waitingForSend=false;draft.readOnly=true;send.disabled=true;presence.textContent='online'}}
+draft.addEventListener('focus',()=>{if(awaitingJoseTap&&!typingStarted){awaitingJoseTap=false;keyboard.style.display='block';keyboard.setAttribute('aria-hidden','false');typeDraft(dialogue[index][1]);}});
+send.addEventListener('click',()=>{if(!waitingForSend||!draft.value.trim())return;const text=draft.value.trim();addBubble('jose',text);draft.value='';draft.readOnly=true;send.disabled=true;waitingForSend=false;typingStarted=false;keyboard.style.display='none';keyboard.setAttribute('aria-hidden','true');index++;sleep(800).then(run)});
+draft.addEventListener('input',()=>{if(!waitingForSend)send.disabled=true});
 draft.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();send.click()}});
 document.getElementById('headerAvatar').onerror=function(){this.style.background='#fff';this.style.objectFit='contain';this.removeAttribute('src');this.alt='R';this.style.padding='8px'};
 function tick(){document.getElementById('clock').textContent=new Intl.DateTimeFormat('en-US',{hour:'numeric',minute:'2-digit'}).format(new Date())}tick();setInterval(tick,30000);
